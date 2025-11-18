@@ -251,19 +251,38 @@ class toon_plus:
     def toonplus_to_dict(cls, text: str):
         text = text.strip()
 
-        # pure LIST format
+        # Pure list format
         if text.startswith("[") and text.endswith("]"):
             return cls.parse_value(text)
 
-        # BLOCK(S) format
+        # Find blocks
         header_re = re.compile(r"^([A-Za-z0-9_]+)?\{([^}]+)\}$", re.MULTILINE)
         matches = list(header_re.finditer(text))
 
         if not matches:
             raise ValueError("Invalid Toon Plus format")
 
-        result = {}
+        # Single unnamed block
+        if len(matches) == 1 and matches[0].group(1) is None:
+            m = matches[0]
+            keys = [k.strip() for k in m.group(2).split(",")]
+            body = text[m.end():].strip()
+            lines = [l.strip() for l in body.split("\n") if l.strip()]
 
+            if len(lines) == 1:
+                vals = cls._split_top_level_commas(lines[0])
+                vals = [cls.parse_value(v) for v in vals]
+                return dict(zip(keys, vals))  # <-- aqui retorna dict diretamente
+            else:
+                arr = []
+                for ln in lines:
+                    vals = cls._split_top_level_commas(ln)
+                    vals = [cls.parse_value(v) for v in vals]
+                    arr.append(dict(zip(keys, vals)))
+                return arr
+
+        # Multiple blocks
+        result = {}
         for i, m in enumerate(matches):
             name = m.group(1)
             keys = [k.strip() for k in m.group(2).split(",")]
@@ -274,18 +293,12 @@ class toon_plus:
             body = text[start:end].strip()
             lines = [l.strip() for l in body.split("\n") if l.strip()]
 
-            # 1 line → simple object
             if len(lines) == 1:
                 vals = cls._split_top_level_commas(lines[0])
                 vals = [cls.parse_value(v) for v in vals]
-                obj = dict(zip(keys, vals))
-                if name is None:
-                    # simple unnamed object
-                    return obj
-                result[name] = obj
+                result[name] = dict(zip(keys, vals))
                 continue
 
-            # multiple → list of objects
             arr = []
             for ln in lines:
                 vals = cls._split_top_level_commas(ln)
@@ -295,6 +308,8 @@ class toon_plus:
             result[name] = arr
 
         return result
+
+
 
     @classmethod
     def encode(cls, data):
