@@ -131,7 +131,7 @@ decoded (simple list of numbers): [1, 2, 4, 5, 6]
 
 ```
 
-'''python
+```python
 # test perfomace
 import time
 from toon_plus import toon_plus
