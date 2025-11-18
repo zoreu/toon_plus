@@ -4,56 +4,71 @@ Toon Plus format implementation based on Toon + CSV.
 
 ```python
 from toon_plus import toon_plus
- data = {
-        "users": [
-            {"name": "Ana", "age": None, "active": False, "country": "Brasil"},
-            {"name": "Bruno", "age": 34, "active": True, "country": "Portugal"}
-        ],
-        "products": [
-            {"id": 1, "name": "Caneta", "price": 2.5},
-            {"id": 2, "name": "Caderno", "price": 15.0}]
-        }
-    data2 = [
-        {"name": "Ana", "age": None, "active": False},{"name": "Bruno", "age": 34, "active": True}
-        ]
-    data3 = {'name': 'John', 'age': 30, 'is_student': False}
-    toon_text = toon_plus.encode(data)
-    print("Toon Plus Format:")
-    print(toon_text)
-    dict_data = toon_plus.decode(toon_text)
-    print("\nDecoded Dictionary:")
-    print(dict_data)
-    print("\nDecoded json:")
-    json_data = toon_plus.decode2json(toon_text)
-    print(json_data)
-    print("\nToon Plus Format (simple array):")
-    toon_text2 = toon_plus.encode(data2)
-    print(toon_text2)
-    dict_data2 = toon_plus.decode(toon_text2)
-    print("\nDecoded Dictionary (simple array):")
-    print(dict_data2)  
-    print("\nDecoded json (simple array):")
-    json_data2 = toon_plus.decode2json(toon_text2)
-    print(json_data2)  
-    toon_text3 = toon_plus.encode(data3)
-    print("\nToon Plus Format (simple object):")
-    print(toon_text3) 
-    print("\nDecoded Dictionary (simple object):")
-    dict_data3 = toon_plus.decode(toon_text3)
-    print(dict_data3)
-    print("\nDecoded json (simple object):")
-    json_data3 = toon_plus.decode2json(toon_text3)
-    print(json_data3)  
+data = {
+    "users": [
+        {"name": "Ana", "age": None, "active": False, "country": "Brasil"},
+        {"name": "Bruno", "age": 34, "active": True, "country": "Portugal"}
+    ],
+    "products": [
+        {"id": 1, "name": "Caneta", "price": 2.5},
+        {"id": 2, "name": "Caderno", "price": 15.0}]
+    }
+data2 = [
+    {"name": "Ana", "age": None, "active": False},{"name": "Bruno", "age": 34, "active": True}
+    ]
+data3 = {'name': 'John', 'age': 30, 'is_student': False}
+data4 = {"Users": {"name": "Alice", "age": 25}}
+data5 = {"Users": {"name": "Alice", "age": 25, "jobs": ['Engineer', 'Writer']}}
+data6 = {"Users": {"name": "Alice", "age": 25, "address": {"city": "Wonderland", "zip": "12345"}}}
+toon_text = toon_plus.encode(data)
+print("Toon Plus Format:")
+print(toon_text)
+dict_data = toon_plus.decode(toon_text)
+print("\nDecoded Dictionary:")
+print(dict_data)
+print("\nDecoded json:")
+json_data = toon_plus.decode2json(toon_text)
+print(json_data)
+print("\nToon Plus Format (simple array):")
+toon_text2 = toon_plus.encode(data2)
+print(toon_text2)
+dict_data2 = toon_plus.decode(toon_text2)
+print("\nDecoded Dictionary (simple array):")
+print(dict_data2)  
+print("\nDecoded json (simple array):")
+json_data2 = toon_plus.decode2json(toon_text2)
+print(json_data2)  
+toon_text3 = toon_plus.encode(data3)
+print("\nToon Plus Format (simple object):")
+print(toon_text3) 
+print("\nDecoded Dictionary (simple object):")
+dict_data3 = toon_plus.decode(toon_text3)
+print(dict_data3)
+print("\nDecoded json (simple object):")
+json_data3 = toon_plus.decode2json(toon_text3)
+print(json_data3) 
+print("\n=== dict inside dict (named simple object) ===")
+dict_in_dict = toon_plus.encode(data4)
+print(dict_in_dict)
+print("\ndecoded (named simple object):", toon_plus.decode(dict_in_dict))    
+print("\n=== list inside dict ===")
+list_in_dict = toon_plus.encode(data5)
+print(list_in_dict)
+print("\ndecoded (list inside dict):", toon_plus.decode(list_in_dict))
+print("\n=== dict inside dict inside dict ===")
+dict_in_dict_in_dict = toon_plus.encode(data6)
+print(dict_in_dict_in_dict)        
+print("\ndecoded (dict inside dict inside dict):", toon_plus.decode(dict_in_dict_in_dict))
 ```
 ```bash
 # OUTPUT
 
 Toon Plus Format:
-users[name,age,active,country]
+users{name,age,active,country}
 Ana,null,false,Brasil
 Bruno,34,true,Portugal
 
-products[id,name,price]
+products{id,name,price}
 1,Caneta,2.5
 2,Caderno,15.0
 
@@ -66,7 +81,7 @@ Decoded json:
 "Caderno", "price": 15.0}]}
 
 Toon Plus Format (simple array):
-[name,age,active]
+{name,age,active}
 Ana,null,false
 Bruno,34,true
 
@@ -85,5 +100,24 @@ Decoded Dictionary (simple object):
 
 Decoded json (simple object):
 {"name": "John", "age": 30, "is_student": false}
+
+=== dict inside dict (named simple object) ===
+Users{name,age}
+Alice,25
+
+decoded (named simple object): {'Users': {'name': 'Alice', 'age': 25}}
+
+=== list inside dict ===
+Users{name,age,jobs}
+Alice,25,[Engineer, Writer]
+
+decoded (list inside dict): {'Users': {'name': 'Alice', 'age': 25, 'jobs': ['Engineer', 'Writer']}}
+
+=== dict inside dict inside dict ===
+Users{name,age,address}
+Alice,25,{city: Wonderland, zip: 12345}
+
+decoded (dict inside dict inside dict): {'Users': {'name': 'Alice', 'age': 25, 'address': {'city': 'Wonderland', 'zip': 12345}}}
+
 ```
 
