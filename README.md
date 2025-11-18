@@ -161,6 +161,7 @@ products{id,name,price}
 toon_to_json, t_json_ = measure(toon_plus.decode2json, data_toon_) # function decode2json
 print(f"\nToon to json [{t_json_:.3f} ms]:") # result: [0.163 ms]
 print(toon_to_json) 
+```
 
 ## Efficiency
 
