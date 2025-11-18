@@ -152,9 +152,9 @@ products{id,name,price}
 1,Caneta,2.5
 2,Caderno,15.0    
     """
-dict_decoded, t_decode = measure(toon_plus.decode, data9) # function decode
+dict_decoded, t_decode = measure(toon_plus.decode, data) # function decode
 print(f"\nDecoded toon plus [{t_decode2:.3f} ms]:") # result: [0.221 ms]
-print(dict_decoded2)
+print(dict_decoded)
 
 data_toon_ = """
 users{name,age,active,country}
