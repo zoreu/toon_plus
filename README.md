@@ -91,10 +91,10 @@ Ana,null,false
 Bruno,34,true
 
 Decoded Dictionary (simple array):
-{None: [{'name': 'Ana', 'age': None, 'active': False}, {'name': 'Bruno', 'age': 34, 'active': True}]}
+[{'name': 'Ana', 'age': None, 'active': False}, {'name': 'Bruno', 'age': 34, 'active': True}]
 
 Decoded json (simple array):
-{"null": [{"name": "Ana", "age": null, "active": false}, {"name": "Bruno", "age": 34, "active": true}]}
+[{"name": "Ana", "age": null, "active": false}, {"name": "Bruno", "age": 34, "active": true}]
 
 Toon Plus Format (simple object):
 {name,age,is_student}
