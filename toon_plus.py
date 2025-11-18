@@ -279,6 +279,9 @@ class toon_plus:
                 vals = cls._split_top_level_commas(lines[0])
                 vals = [cls.parse_value(v) for v in vals]
                 obj = dict(zip(keys, vals))
+                if name is None:
+                    # simple unnamed object
+                    return obj
                 result[name] = obj
                 continue
 
