@@ -136,6 +136,13 @@ decoded (simple list of numbers): [1, 2, 4, 5, 6]
 import time
 from toon_plus import toon_plus
 
+def measure(func, *args, **kwargs):
+    start = time.perf_counter()
+    result = func(*args, **kwargs)
+    end = time.perf_counter()
+    elapsed_ms = (end - start) * 1000  # convertendo para milissegundos
+    return result, elapsed_ms
+
 data = """
 users{name,age,active,country}
 Ana,null,false,Brasil
