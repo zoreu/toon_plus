@@ -101,10 +101,10 @@ Toon Plus Format (simple object):
 John,30,false
 
 Decoded Dictionary (simple object):
-{None: {'name': 'John', 'age': 30, 'is_student': False}}
+{'name': 'John', 'age': 30, 'is_student': False}
 
 Decoded json (simple object):
-{"null": {"name": "John", "age": 30, "is_student": false}}
+{"name": "John", "age": 30, "is_student": false}
 
 === dict inside dict (named simple object) ===
 Users{name,age}
