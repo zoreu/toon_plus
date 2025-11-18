@@ -1,5 +1,5 @@
 # toon_plus
-Toon Plus format implementation based on Toon + CSV.
+Toon Plus format implementation based on Toon + CSV format.
 ## Token-Oriented Object Notation Plus (TOON PLUS)
 
 ```python
