@@ -36,48 +36,34 @@ class toon_plus:
     # ---------------------------
     @staticmethod
     def _split_top_level_commas(text: str):
-        parts = []
-        cur = []
         stack = []
         in_quotes = False
         esc = False
+        start = 0
 
-        append = cur.append
-        join_cur = ''.join
-
-        for ch in text:
+        for i, ch in enumerate(text):
             if esc:
-                append(ch)
                 esc = False
                 continue
-            if ch == "\\":
-                append(ch)
+            if ch == '\\':
                 esc = True
                 continue
             if ch == '"':
                 in_quotes = not in_quotes
-                append(ch)
-                continue
-            if in_quotes:
-                append(ch)
                 continue
             if ch in "[{":
                 stack.append(ch)
-                append(ch)
                 continue
             if ch in "]}":
                 if stack:
                     stack.pop()
-                append(ch)
                 continue
             if ch == "," and not stack and not in_quotes:
-                parts.append(join_cur(cur).strip())
-                cur.clear()
-                continue
-            append(ch)
-        if cur:
-            parts.append(join_cur(cur).strip())
-        return parts
+                yield text[start:i].strip()
+                start = i + 1
+        if start < len(text):
+            yield text[start:].strip()
+
 
     @staticmethod
     def _split_key_value(token: str):
@@ -245,6 +231,108 @@ class toon_plus:
                 result[name] = [dict(zip(keys, map(cls.parse_value, cls._split_top_level_commas(ln)))) for ln in lines]
         return result
 
+    @staticmethod
+    def _parse_value_to_json_fast(tok: str):
+        tok = tok.strip()
+        if not tok:
+            return "null"
+        low = tok.lower()
+        if low in ("null", "none"):
+            return "null"
+        if low == "true":
+            return "true"
+        if low == "false":
+            return "false"
+
+        # número
+        try:
+            if '.' in tok:
+                float(tok)
+            else:
+                int(tok)
+            return tok
+        except ValueError:
+            pass
+
+        # string
+        if tok[0] == '"' and tok[-1] == '"':
+            return '"' + tok[1:-1].replace('\\"', '"') + '"'
+        # valores complexos (listas ou objetos)
+        if tok[0] == '[' and tok[-1] == ']':
+            inner = tok[1:-1].strip()
+            if not inner:
+                return "[]"
+            items = [toon_plus._parse_value_to_json_fast(x) for x in toon_plus._split_top_level_commas(inner)]
+            return "[" + ",".join(items) + "]"
+        if tok[0] == '{' and tok[-1] == '}':
+            inner = tok[1:-1].strip()
+            if not inner:
+                return "{}"
+            parts = []
+            for p in toon_plus._split_top_level_commas(inner):
+                k, v = toon_plus._split_key_value(p)
+                key_clean = k.strip().strip('"')  # remove espaços e aspas externas
+                val_json = toon_plus._parse_value_to_json_fast(v)
+                parts.append(f'"{key_clean}":{val_json}')
+            return "{" + ",".join(parts) + "}"
+
+        # string normal
+        return '"' + tok.replace('"', '\\"') + '"'
+    
+    @classmethod
+    def decode2json(cls, text: str):
+        text = text.strip()
+        if not text:
+            return "{}"
+
+        # lista pura
+        if text.startswith("[") and text.endswith("]"):
+            return cls._parse_value_to_json_fast(text)
+
+        header_re = re.compile(r"^([A-Za-z0-9_]+)?\{([^}]+)\}$", re.MULTILINE)
+        matches = list(header_re.finditer(text))
+        if not matches:
+            raise ValueError("Invalid Toon Plus format")
+
+        # Single unnamed block
+        if len(matches) == 1 and matches[0].group(1) is None:
+            m = matches[0]
+            keys = [k.strip() for k in m.group(2).split(",")]
+            body_lines = [l.strip() for l in text[m.end():].splitlines() if l.strip()]
+            if len(body_lines) == 1:
+                vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(body_lines[0])]
+                items = [f'"{k}":{v}' for k, v in zip(keys, vals)]
+                return "{" + ",".join(items) + "}"
+            # lista de objetos
+            all_items = []
+            for ln in body_lines:
+                vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(ln)]
+                all_items.append("{" + ",".join(f'"{k}":{v}' for k, v in zip(keys, vals)) + "}")
+            return "[" + ",".join(all_items) + "]"
+
+        # múltiplos blocos
+        result_parts = []
+        for i, m in enumerate(matches):
+            name = m.group(1)
+            keys = [k.strip() for k in m.group(2).split(",")]
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+            body_lines = [l.strip() for l in text[start:end].splitlines() if l.strip()]
+
+            if len(body_lines) == 1:
+                vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(body_lines[0])]
+                items = [f'"{k}":{v}' for k, v in zip(keys, vals)]
+                result_parts.append(f'"{name}":{{' + ",".join(items) + "}}")
+            else:
+                block_items = []
+                for ln in body_lines:
+                    vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(ln)]
+                    block_items.append("{" + ",".join(f'"{k}":{v}' for k, v in zip(keys, vals)) + "}")
+                result_parts.append(f'"{name}":[' + ",".join(block_items) + "]")
+        return "{" + ",".join(result_parts) + "}"  
+
+
+
     # ---------------------------
     # public methods
     # ---------------------------
@@ -252,13 +340,21 @@ class toon_plus:
     def encode(cls, data):
         return cls.dict_to_toonplus(data)
 
+    # toon plus to dict
     @classmethod
     def decode(cls, text):
-        return cls.toonplus_to_dict(text)
-
+        json_data = cls.decode2json(text)
+        return json.loads(json_data)
+    
+    # toon plus to dict method 2
     @classmethod
-    def decode2json(cls, text):
-        return json.dumps(cls.decode(text), ensure_ascii=False)
+    def decode2(cls, text):
+        return cls.toonplus_to_dict(text)    
+
+    
+    @classmethod
+    def decode_json(cls, text):
+        return json.loads(text)
 
 
 if __name__ == "__main__":
