@@ -121,3 +121,7 @@ decoded (dict inside dict inside dict): {'Users': {'name': 'Alice', 'age': 25, '
 
 ```
 
+## Efficiency
+
+Toon Plus is 11% to 21% more efficient than normal toon
+
