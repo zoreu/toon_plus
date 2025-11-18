@@ -131,6 +131,37 @@ decoded (simple list of numbers): [1, 2, 4, 5, 6]
 
 ```
 
+'''python
+# test perfomace
+import time
+from toon_plus import toon_plus
+
+data = """
+users{name,age,active,country}
+Ana,null,false,Brasil
+Bruno,34,true,Portugal
+
+products{id,name,price}
+1,Caneta,2.5
+2,Caderno,15.0    
+    """
+dict_decoded, t_decode = measure(toon_plus.decode, data9) # function decode
+print(f"\nDecoded toon plus [{t_decode2:.3f} ms]:") # result: [0.221 ms]
+print(dict_decoded2)
+
+data_toon_ = """
+users{name,age,active,country}
+Ana,null,false,Brasil
+Bruno,34,true,Portugal
+
+products{id,name,price}
+1,Caneta,2.5
+2,Caderno,15.0 
+
+toon_to_json, t_json_ = measure(toon_plus.decode2json, data_toon_) # function decode2json
+print(f"\nToon to json [{t_json_:.3f} ms]:") # result: [0.163 ms]
+print(toon_to_json) 
+
 ## Efficiency
 
 Toon Plus is 11% to 21% more efficient than normal toon
