@@ -20,6 +20,7 @@ data3 = {'name': 'John', 'age': 30, 'is_student': False}
 data4 = {"Users": {"name": "Alice", "age": 25}}
 data5 = {"Users": {"name": "Alice", "age": 25, "jobs": ['Engineer', 'Writer']}}
 data6 = {"Users": {"name": "Alice", "age": 25, "address": {"city": "Wonderland", "zip": "12345"}}}
+data7 = [1,2,4,5,6]
 toon_text = toon_plus.encode(data)
 print("Toon Plus Format:")
 print(toon_text)
@@ -59,6 +60,10 @@ print("\n=== dict inside dict inside dict ===")
 dict_in_dict_in_dict = toon_plus.encode(data6)
 print(dict_in_dict_in_dict)        
 print("\ndecoded (dict inside dict inside dict):", toon_plus.decode(dict_in_dict_in_dict))
+print("\n=== simple list of numbers ===")
+list_numbers = toon_plus.encode(data7)
+print(list_numbers)
+print("\ndecoded (simple list of numbers):", toon_plus.decode(list_numbers))
 ```
 ```bash
 # OUTPUT
@@ -86,20 +91,20 @@ Ana,null,false
 Bruno,34,true
 
 Decoded Dictionary (simple array):
-[{'name': 'Ana', 'age': None, 'active': False}, {'name': 'Bruno', 'age': 34, 'active': True}]
+{None: [{'name': 'Ana', 'age': None, 'active': False}, {'name': 'Bruno', 'age': 34, 'active': True}]}
 
 Decoded json (simple array):
-[{"name": "Ana", "age": null, "active": false}, {"name": "Bruno", "age": 34, "active": true}]
+{"null": [{"name": "Ana", "age": null, "active": false}, {"name": "Bruno", "age": 34, "active": true}]}
 
 Toon Plus Format (simple object):
 {name,age,is_student}
 John,30,false
 
 Decoded Dictionary (simple object):
-{'name': 'John', 'age': 30, 'is_student': False}
+{None: {'name': 'John', 'age': 30, 'is_student': False}}
 
 Decoded json (simple object):
-{"name": "John", "age": 30, "is_student": false}
+{"null": {"name": "John", "age": 30, "is_student": false}}
 
 === dict inside dict (named simple object) ===
 Users{name,age}
@@ -118,6 +123,11 @@ Users{name,age,address}
 Alice,25,{city: Wonderland, zip: 12345}
 
 decoded (dict inside dict inside dict): {'Users': {'name': 'Alice', 'age': 25, 'address': {'city': 'Wonderland', 'zip': 12345}}}
+
+=== simple list of numbers ===
+[1, 2, 4, 5, 6]
+
+decoded (simple list of numbers): [1, 2, 4, 5, 6]
 
 ```
 
