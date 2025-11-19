@@ -14,16 +14,14 @@ class toon_plus:
         if isinstance(v, bool):
             return "true" if v else "false"
         
-        # Se for número real (int/float), retorna string sem aspas
+        # Se for número real (int/float), retorna string SEM aspas
         if isinstance(v, (int, float)):
             return str(v)
         
         if isinstance(v, list):
-            # Encode recursivo para listas
             return f"[{', '.join(map(toon_plus.encode_value, v))}]"
         
         if isinstance(v, dict):
-            # Encode recursivo para dicts inline
             inner = ", ".join(f"{k}: {toon_plus.encode_value(vv)}" for k, vv in v.items())
             return "{" + inner + "}"
 
@@ -32,16 +30,19 @@ class toon_plus:
             if v.lower() in ("true", "false", "none", "null"):
                 raise ValueError(f'Isolated boolean/None strings are not allowed. "{v}"')
             
-            # FIX 1: Detect strings that look exactly like numbers and force quotes.
-            # This ensures "40" stays "40" (string) and doesn't become 40 (int) on decode.
-            # Covers integers and floats like "10.5"
-            if re.fullmatch(r"-?\d+(\.\d+)?", v):
-                return '"' + v + '"'
-
             s = str(v)
-            # Quote if special chars exist or just to be safe
+            
+            # FIX PRINCIPAL:
+            # 1. Se parece exatamente um número (ex: "40", "10.5") -> Aspas obrigatórias.
+            # 2. Se COMEÇA com dígito ou hífen (ex: "92998-3874", "1-770...", "2023-01-01") -> Aspas obrigatórias.
+            # Isso garante que ZipCodes, Telefones e Strings Numéricas fiquem entre aspas.
+            if re.match(r"^-?\d", s):
+                return '"' + s + '"'
+
+            # 3. Caracteres especiais de sintaxe -> Aspas obrigatórias
             if any(c in s for c in [",", "[", "]", "{", "}", "\n", "\r", '"']):
                 return '"' + s.replace('"', '\\"') + '"'
+                
             return s
 
         # Fallback
@@ -131,7 +132,7 @@ class toon_plus:
         if low == "false":
             return False
 
-        # Strings explícitas (com aspas)
+        # String explícita com aspas
         if tok.startswith('"') and tok.endswith('"'):
             return tok[1:-1].replace('\\"', '"')
 
@@ -170,12 +171,7 @@ class toon_plus:
             return cls._encode_list_block(None, data)
 
         if isinstance(data, dict):
-            # FIX 2: Melhor detecção de "Complexidade".
-            # Um dicionário só precisa ser dividido em blocos se contiver:
-            # 1. Outro Dicionário (Nested Object)
-            # 2. Uma Lista de Dicionários (List of Objects)
-            # Se tiver apenas primitivos OU listas de primitivos, ele é "Flat" e pode ser uma única linha.
-            
+            # Verifica se o dict é "complexo" (tem dict aninhado ou lista de dicts como valor direto)
             has_complex_values = False
             for v in data.values():
                 if isinstance(v, dict):
@@ -185,39 +181,25 @@ class toon_plus:
                     has_complex_values = True
                     break
             
-            # Se for simples (incluindo listas de números/strings), codifica como bloco único {header}\nRow
+            # Se for simples (primitivos ou lista de primitivos), encode inline
             if not has_complex_values:
                 keys = list(data.keys())
                 header = "{" + ",".join(keys) + "}"
                 row = ",".join(cls.encode_value(data[k]) for k in keys)
                 return header + "\n" + row
 
-            # Se tiver valores complexos, separamos em blocos
             blocks = []
             for name, value in data.items():
-                # Lista de objetos -> Novo bloco
                 if isinstance(value, list):
-                    # Se for lista de primitivos, poderia ter sido pega acima, mas se estamos aqui
-                    # é porque o dict é misto. ToonPlus não lida bem com raízes mistas sem nome.
-                    # Mas vamos verificar:
-                    if value and not isinstance(value[0], dict):
-                         # Lista de primitivos em um dict complexo? 
-                         # Idealmente isso seria suportado, mas na estrutura de blocos
-                         # o formato geralmente espera Nome{Header}.
-                         # Vamos forçar encode_list_block que lida com isso.
-                         pass
                     blocks.append(cls._encode_list_block(name, value))
                     continue
                 
-                # Dicionário aninhado -> Novo bloco
                 if isinstance(value, dict):
                     keys = list(value.keys())
                     row = ",".join(cls.encode_value(value[k]) for k in keys)
                     blocks.append(f"{name}{{{','.join(keys)}}}\n{row}")
                     continue
                 
-                # Primitivo solto em dict complexo (Ex: {"versao": 1, "Users": [...]})
-                # Isso ainda geraria erro na spec atual, mas o caso do erro data10 foi resolvido pelo `if not has_complex_values`.
                 raise ValueError(f"Unsupported top-level mix for key '{name}'. ToonPlus prefers blocks.")
             return "\n\n".join(blocks)
         
@@ -228,7 +210,7 @@ class toon_plus:
         if not items:
             return f"{name}{{}}" if name else "{}"
         
-        # Se os itens NÃO forem dicionários (ex: lista de strings), encoda como array inline
+        # Se itens não forem dicts (ex: lista de strings/ints), encode inline array
         if not isinstance(items[0], dict):
             val = f"[{', '.join(map(cls.encode_value, items))}]"
             return f"{name}{val}" if name else val
@@ -271,7 +253,7 @@ class toon_plus:
                 return dict(zip(keys, map(cls.parse_value, vals)))
             return [dict(zip(keys, map(cls.parse_value, cls._split_top_level_commas(ln)))) for ln in lines]
 
-        # Múltiplos Blocos ou Bloco Nomeado
+        # Múltiplos Blocos
         result = {}
         for i, m in enumerate(matches):
             name = m.group(1)
@@ -300,18 +282,15 @@ class toon_plus:
         if low == "true": return "true"
         if low == "false": return "false"
 
-        # String já cotada (ex: "Alice" ou "40")
         if tok.startswith('"') and tok.endswith('"'):
             return tok
 
-        # Complex: List
         if tok.startswith('[') and tok.endswith(']'):
             inner = tok[1:-1].strip()
             if not inner: return "[]"
             items = [toon_plus._parse_value_to_json_fast(x) for x in toon_plus._split_top_level_commas(inner)]
             return "[" + ",".join(items) + "]"
         
-        # Complex: Dict
         if tok.startswith('{') and tok.endswith('}'):
             inner = tok[1:-1].strip()
             if not inner: return "{}"
@@ -323,7 +302,6 @@ class toon_plus:
                 parts.append(f'"{key_clean}":{val_json}')
             return "{" + ",".join(parts) + "}"
 
-        # Number (only if unquoted in file)
         try:
             if '.' in tok: float(tok)
             else: int(tok)
@@ -331,7 +309,6 @@ class toon_plus:
         except ValueError:
             pass
 
-        # Fallback string
         return '"' + tok.replace('"', '\\"') + '"'
     
     @classmethod
@@ -350,26 +327,22 @@ class toon_plus:
              if val != "null": return val
              raise ValueError("Invalid Toon Plus format")
 
-        # Single unnamed block handling
         if len(matches) == 1 and matches[0].group(1) is None:
             m = matches[0]
             keys = [k.strip() for k in m.group(2).split(",")]
             body_lines = [l.strip() for l in text[m.end():].splitlines() if l.strip()]
             
             if len(body_lines) == 1:
-                # Single object
                 vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(body_lines[0])]
                 items = [f'"{k}":{v}' for k, v in zip(keys, vals)]
                 return "{" + ",".join(items) + "}"
             
-            # List of objects
             all_items = []
             for ln in body_lines:
                 vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(ln)]
                 all_items.append("{" + ",".join(f'"{k}":{v}' for k, v in zip(keys, vals)) + "}")
             return "[" + ",".join(all_items) + "]"
 
-        # Multiple blocks or Single Named block
         result_parts = []
         for i, m in enumerate(matches):
             name = m.group(1)
@@ -383,13 +356,11 @@ class toon_plus:
             body_lines = [l.strip() for l in body_block.splitlines() if l.strip()]
 
             if len(body_lines) == 1:
-                # Treat as Single Dict inside the main Dict
                 vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(body_lines[0])]
                 items = [f'"{k}":{v}' for k, v in zip(keys, vals)]
                 json_obj = "{" + ",".join(items) + "}"
                 result_parts.append(f'"{name}":{json_obj}')
             else:
-                # Treat as List of Dicts
                 block_items = []
                 for ln in body_lines:
                     vals = [cls._parse_value_to_json_fast(v) for v in cls._split_top_level_commas(ln)]
@@ -408,7 +379,8 @@ class toon_plus:
 
     @classmethod
     def decode(cls, text):
-        return json.loads(cls.decode2json(text))
+        json_data = cls.decode2json(text)
+        return json.loads(json_data)
     
     @classmethod
     def decode2(cls, text):
@@ -446,6 +418,55 @@ if __name__ == "__main__":
     data10 = {"name": "Pedro", "numbers": ["10", "20", "30"]}
     data11 = {"nome": "Alice", "numbers": [10,20,30]}
     data12 = {"nome": "Alice", "values": [None, True, False, "text", 42, 3.14, "5.5"]}
+
+    data13 = [
+  {
+    "id": 1,
+    "name": "Leanne Graham",
+    "username": "Bret",
+    "email": "Sincere@april.biz",
+    "address": {
+      "street": "Kulas Light",
+      "suite": "Apt. 556",
+      "city": "Gwenborough",
+      "zipcode": "92998-3874",
+      "geo": {
+        "lat": "-37.3159",
+        "lng": "81.1496"
+      }
+    },
+    "phone": "1-770-736-8031 x56442",
+    "website": "hildegard.org",
+    "company": {
+      "name": "Romaguera-Crona",
+      "catchPhrase": "Multi-layered client-server neural-net",
+      "bs": "harness real-time e-markets"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Ervin Howell",
+    "username": "Antonette",
+    "email": "Shanna@melissa.tv",
+    "address": {
+      "street": "Victor Plains",
+      "suite": "Suite 879",
+      "city": "Wisokyburgh",
+      "zipcode": "90566-7771",
+      "geo": {
+        "lat": "-43.9509",
+        "lng": "-34.4618"
+      }
+    },
+    "phone": "010-692-6593 x09125",
+    "website": "anastasia.net",
+    "company": {
+      "name": "Deckow-Crist",
+      "catchPhrase": "Proactive didactic contingency",
+      "bs": "synergize scalable supply-chains"
+    }
+  }
+]
 
     toon_text = toon_plus.encode(data)
     print("Toon Plus Format:")
@@ -515,3 +536,8 @@ if __name__ == "__main__":
     mixed_list = toon_plus.encode(data12)
     print(mixed_list)
     print("\ndecoded:", toon_plus.decode(mixed_list))
+
+    print("\n=== complex data 13 ===")
+    complex_data_13 = toon_plus.encode(data13)
+    print(complex_data_13)
+    print("\ndecoded:", toon_plus.decode(complex_data_13))
