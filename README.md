@@ -2,6 +2,8 @@
 Toon Plus format implementation based on Toon + CSV format.
 ## Token-Oriented Object Notation Plus (TOON PLUS)
 
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/zoreu/toon_plus/blob/main/toon_test.ipynb)
+
 ```python
 from toon_plus import toon_plus
 data = {
